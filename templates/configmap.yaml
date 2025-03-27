@@ -1,0 +1,36 @@
+# https://kubernetes.io/docs/concepts/configuration/configmap/
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zk-conf
+  namespace: default
+data:
+  zoo.cfg: |
+    tickTime=2000
+    initLimit=10
+    syncLimit=5
+    dataDir=/home/zookeeper/cluster-data/zk/data
+    clientPort=2181
+    autopurge.snapRetainCount=10
+
+    {{ range $i := until (int .Values.num_zookeeper_replicas )}}
+      {{- printf "server.%d=zk-%d.zookeeper.default.svc.cluster.local:2888:3888" (add $i 1) $i }}
+    {{ end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zookeeper-entrypoint
+data:
+  entrypoint.sh: |
+    #!/usr/bin/env bash
+
+    set -e
+
+    id="$(hostname -f | sed -n 's/zk-\([[:digit:]]\+\).zookeeper.\+/\1/p')"
+
+    if [[ ! -f /home/zookeeper/cluster-data/zk/data/myid ]]; then
+      echo "$((id + 1))" > /home/zookeeper/cluster-data/zk/data/myid
+    fi
+
+    zkServer.sh start-foreground

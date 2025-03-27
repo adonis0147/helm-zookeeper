@@ -1,0 +1,54 @@
+# https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: zk
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: zookeeper
+  serviceName: zookeeper
+  replicas: {{ .Values.num_zookeeper_replicas }}
+  template:
+    metadata:
+      labels:
+        app: zookeeper
+    spec:
+      containers:
+        - name: zk
+          image: {{ .Values.image }}
+          imagePullPolicy: Never
+          env:
+            - name: ZOO_LOG4J_PROP
+              value: INFO,ROLLINGFILE,CONSOLE
+          command:
+            - bash
+            - /home/zookeeper/scripts/entrypoint.sh
+          volumeMounts:
+            - name: zookeeper-conf
+              mountPath: /home/zookeeper/zookeeper-current/conf/zoo.cfg
+              subPath: zoo.cfg
+            - name: zookeeper-data
+              mountPath: /home/zookeeper/cluster-data/zk/data
+            - name: zookeeper-entrypoint
+              mountPath: /home/zookeeper/scripts
+      volumes:
+        - name: zookeeper-conf
+          configMap:
+            name: zk-conf
+        - name: zookeeper-entrypoint
+          configMap:
+            name: zookeeper-entrypoint
+            items:
+              - key: entrypoint.sh
+                path: entrypoint.sh
+  volumeClaimTemplates:
+    - metadata:
+        name: zookeeper-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ .Values.storage.zookeeper_size }}

@@ -1,0 +1,4 @@
+image: local/zookeeper:latest
+num_zookeeper_replicas: 3
+storage:
+  zookeeper_size: 512M
